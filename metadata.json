@@ -1,0 +1,5 @@
+{
+  "name": "Second Brain - AI Assistant",
+  "description": "An intelligent chat assistant powered by Google Gemini, designed to be your personal second brain for capturing and processing ideas.",
+  "requestFramePermissions": []
+}
