@@ -6,6 +6,8 @@ interface GeneratedDraft {
   content: string;
 }
 
+export type RefineStyle = 'concise' | 'formal' | 'simple';
+
 export const generateDraft = async (
   template: DocumentTemplate,
   inputs: Record<string, string>
@@ -70,15 +72,23 @@ Based on this request, generate a response in the specified JSON format. The tit
   }
 };
 
-export const refineText = async (textToRefine: string): Promise<string> => {
+export const refineText = async (textToRefine: string, style: RefineStyle): Promise<string> => {
   if (!textToRefine.trim()) {
     return textToRefine;
   }
+
+  const styleInstructions: Record<RefineStyle, string> = {
+    concise: 'Improve its clarity and conciseness.',
+    formal: 'Improve its professionalism using formal legal language.',
+    simple: 'Simplify the language to be easily understandable by a non-expert.',
+  };
+
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   const prompt = `
-You are an expert legal editor. Your task is to refine the following text.
-Improve its clarity, conciseness, and professionalism while preserving its original legal meaning.
+You are an expert legal editor. Your task is to refine the following text based on the user's request.
+${styleInstructions[style]}
+Preserve the original legal meaning.
 Do not add any introductory or concluding remarks, explanations, or markdown formatting.
 Only provide the refined text as a plain string.
 

@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Document } from '../types';
-import { SparkleIcon, SpinnerIcon, XIcon } from './icons';
-import { refineText } from '../services/geminiService';
+import { SparkleIcon, SpinnerIcon, XIcon, ChevronDownIcon } from './icons';
+import { refineText, RefineStyle } from '../services/geminiService';
 
 interface EditorProps {
   document: Document;
@@ -18,7 +18,7 @@ const Editor: React.FC<EditorProps> = ({ document, onBack, onUpdate }) => {
   // State for AI Refine feature
   const [selectedText, setSelectedText] = useState('');
   const [selectionRange, setSelectionRange] = useState<{ start: number; end: number } | null>(null);
-  const [isRefining, setIsRefining] = useState(false);
+  const [refiningStyle, setRefiningStyle] = useState<RefineStyle | null>(null);
   const [isRefineModalOpen, setIsRefineModalOpen] = useState(false);
   const [refinedText, setRefinedText] = useState('');
   const [refineError, setRefineError] = useState<string | null>(null);
@@ -51,12 +51,12 @@ const Editor: React.FC<EditorProps> = ({ document, onBack, onUpdate }) => {
     }
   };
 
-  const handleRefineText = async () => {
+  const handleRefineText = async (style: RefineStyle) => {
     if (!selectedText) return;
-    setIsRefining(true);
+    setRefiningStyle(style);
     setRefineError(null);
     try {
-      const result = await refineText(selectedText);
+      const result = await refineText(selectedText, style);
       setRefinedText(result);
       setIsRefineModalOpen(true);
     } catch (err) {
@@ -64,7 +64,7 @@ const Editor: React.FC<EditorProps> = ({ document, onBack, onUpdate }) => {
       setRefineError(message);
       alert(`Refine Error: ${message}`); // Simple error feedback
     } finally {
-      setIsRefining(false);
+      setRefiningStyle(null);
     }
   };
 
@@ -147,13 +147,10 @@ const Editor: React.FC<EditorProps> = ({ document, onBack, onUpdate }) => {
         <aside className="w-80 bg-slate-50 border-l border-slate-200 p-6 flex-shrink-0">
           <h2 className="text-xl font-bold text-slate-800 mb-6">AI Assistant</h2>
           <div className="space-y-4">
-            <AiActionButton 
-                icon={<SparkleIcon className="w-5 h-5"/>} 
-                title="Refine Text" 
-                description="Improve clarity, tone, or conciseness of selected text." 
-                onClick={handleRefineText}
-                isProcessing={isRefining}
+            <AiRefineAction
+                onRefine={handleRefineText}
                 disabled={!selectedText || !isEditing}
+                refiningStyle={refiningStyle}
             />
             <AiActionButton icon={<SparkleIcon className="w-5 h-5"/>} title="Suggest Clauses" description="Get suggestions for relevant legal clauses based on context." onClick={() => handleAction('Suggest Clauses')} />
             <AiActionButton icon={<SparkleIcon className="w-5 h-5"/>} title="Validate Document" description="Check for inconsistencies and potential risks." onClick={() => handleAction('Validate Document')} />
@@ -217,11 +214,82 @@ const AiActionButton: React.FC<AiActionButtonProps> = ({ icon, title, descriptio
             <div className="text-blue-500 w-5 h-5 flex items-center justify-center">
                 {isProcessing ? <SpinnerIcon className="animate-spin" /> : icon}
             </div>
-            <h3 className="text-md font-semibold text-slate-800">{isProcessing ? 'Refining...' : title}</h3>
+            <h3 className="text-md font-semibold text-slate-800">{isProcessing ? 'Processing...' : title}</h3>
         </div>
         <p className="text-sm text-slate-600 mt-2">{description}</p>
     </button>
 );
 
+const refineStyles: { id: RefineStyle; label: string; description: string }[] = [
+    { id: 'concise', label: 'More Concise', description: 'Shorten and clarify.' },
+    { id: 'formal', label: 'More Formal', description: 'Use professional legal phrasing.' },
+    { id: 'simple', label: 'Simpler Language', description: 'Make it easier to understand.' },
+];
+
+interface AiRefineActionProps {
+  onRefine: (style: RefineStyle) => void;
+  disabled: boolean;
+  refiningStyle: RefineStyle | null;
+}
+
+const AiRefineAction: React.FC<AiRefineActionProps> = ({ onRefine, disabled, refiningStyle }) => {
+    const [isOpen, setIsOpen] = useState(false);
+
+    useEffect(() => {
+        // Close the menu if the button becomes disabled (e.g., user deselects text)
+        if (disabled) {
+            setIsOpen(false);
+        }
+    }, [disabled]);
+
+    return (
+        <div className="bg-white rounded-lg shadow-sm border border-slate-200">
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                disabled={disabled}
+                className="w-full text-left p-4 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex justify-between items-center hover:bg-slate-50"
+                aria-expanded={isOpen}
+                aria-controls="refine-options"
+            >
+                <div>
+                    <div className="flex items-center gap-3">
+                        <SparkleIcon className="text-blue-500 w-5 h-5"/>
+                        <h3 className="text-md font-semibold text-slate-800">Refine Text</h3>
+                    </div>
+                    <p className="text-sm text-slate-600 mt-2">Improve clarity, tone, or conciseness of selected text.</p>
+                </div>
+                <ChevronDownIcon className={`w-5 h-5 text-slate-500 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {isOpen && (
+                <div id="refine-options" className="p-2 pt-0">
+                    <div className="border-t border-slate-200 my-2"></div>
+                    <div className="space-y-1">
+                        {refineStyles.map(style => (
+                            <button
+                                key={style.id}
+                                onClick={() => {
+                                    onRefine(style.id);
+                                    setIsOpen(false);
+                                }}
+                                disabled={!!refiningStyle}
+                                className="w-full text-left p-3 rounded-md hover:bg-blue-50 transition-colors flex items-center justify-between disabled:cursor-not-allowed disabled:bg-slate-50"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="w-5 h-5 text-blue-500 flex items-center justify-center">
+                                        {refiningStyle === style.id && <SpinnerIcon className="animate-spin" />}
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-sm text-slate-700">{style.label}</p>
+                                        <p className="text-xs text-slate-500">{style.description}</p>
+                                    </div>
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
 
 export default Editor;
