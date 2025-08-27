@@ -69,3 +69,44 @@ Based on this request, generate a response in the specified JSON format. The tit
     throw new Error("Failed to generate the document draft. The AI service may be unavailable or experienced an error.");
   }
 };
+
+export const refineText = async (textToRefine: string): Promise<string> => {
+  if (!textToRefine.trim()) {
+    return textToRefine;
+  }
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+  const prompt = `
+You are an expert legal editor. Your task is to refine the following text.
+Improve its clarity, conciseness, and professionalism while preserving its original legal meaning.
+Do not add any introductory or concluding remarks, explanations, or markdown formatting.
+Only provide the refined text as a plain string.
+
+Original text:
+---
+${textToRefine}
+---
+
+Refined text:`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        temperature: 0.2,
+      }
+    });
+    
+    const text = response.text;
+    if (!text) {
+      throw new Error("Received an empty response from the AI.");
+    }
+    
+    return text.trim();
+
+  } catch (error) {
+    console.error("Error refining text with Gemini:", error);
+    throw new Error("Failed to refine the text. The AI service may be unavailable or experienced an error.");
+  }
+};

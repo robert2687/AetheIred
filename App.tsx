@@ -70,6 +70,12 @@ const App: React.FC = () => {
       doc.id === id ? { ...doc, content: newContent, updatedAt: new Date().toLocaleString() } : doc
     ));
   };
+
+  const handleUpdateDocumentTitle = (id: string, newTitle: string) => {
+    setDocuments(docs => docs.map(doc => 
+        doc.id === id ? { ...doc, title: newTitle, updatedAt: new Date().toLocaleString() } : doc
+    ));
+  };
   
   const handleDeleteDocument = (id: string) => {
     if (window.confirm('Are you sure you want to delete this document? This action cannot be undone.')) {
@@ -81,9 +87,17 @@ const App: React.FC = () => {
   };
 
   const renderView = () => {
+    const activeDocumentId = view.name === 'editor' ? view.documentId : null;
     switch (view.name) {
       case 'dashboard':
-        return <Dashboard documents={documents} onCreateNew={handleCreateNew} onSelectDocument={handleSelectDocument} onDelete={handleDeleteDocument} />;
+        return <Dashboard 
+            documents={documents} 
+            onCreateNew={handleCreateNew} 
+            onSelectDocument={handleSelectDocument} 
+            onDelete={handleDeleteDocument}
+            onUpdateTitle={handleUpdateDocumentTitle}
+            activeDocumentId={activeDocumentId}
+        />;
       case 'templateSelector':
         return <TemplateSelector templates={TEMPLATES} onSelectTemplate={handleSelectTemplate} />;
       case 'documentForm':
@@ -114,7 +128,7 @@ const App: React.FC = () => {
         <nav className="p-4">
             <button
                 onClick={handleBackToDashboard}
-                className="w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors text-slate-700 hover:bg-slate-100"
+                className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${view.name === 'dashboard' ? 'bg-blue-50 text-blue-700' : 'text-slate-700 hover:bg-slate-100'}`}
             >
                 Dashboard
             </button>

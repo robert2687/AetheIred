@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Document } from '../types';
 import { FileTextIcon } from './icons';
 
@@ -7,6 +7,8 @@ interface DashboardProps {
   onCreateNew: () => void;
   onSelectDocument: (document: Document) => void;
   onDelete: (id: string) => void;
+  onUpdateTitle: (id: string, newTitle: string) => void;
+  activeDocumentId: string | null;
 }
 
 const statusStyles: Record<Document['status'], string> = {
@@ -17,7 +19,34 @@ const statusStyles: Record<Document['status'], string> = {
 };
 
 
-const Dashboard: React.FC<DashboardProps> = ({ documents, onCreateNew, onSelectDocument, onDelete }) => {
+const Dashboard: React.FC<DashboardProps> = ({ documents, onCreateNew, onSelectDocument, onDelete, onUpdateTitle, activeDocumentId }) => {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [titleValue, setTitleValue] = useState('');
+
+  const handleTitleDoubleClick = (doc: Document) => {
+    setEditingId(doc.id);
+    setTitleValue(doc.title);
+  };
+
+  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setTitleValue(e.target.value);
+  };
+
+  const commitTitleChange = () => {
+    if (editingId && titleValue.trim()) {
+        onUpdateTitle(editingId, titleValue.trim());
+    }
+    setEditingId(null);
+  };
+
+  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+        commitTitleChange();
+    } else if (e.key === 'Escape') {
+        setEditingId(null);
+    }
+  };
+
   return (
     <div className="p-8">
       <div className="flex justify-between items-center mb-6">
@@ -44,11 +73,28 @@ const Dashboard: React.FC<DashboardProps> = ({ documents, onCreateNew, onSelectD
           </thead>
           <tbody className="bg-white divide-y divide-slate-200">
             {documents.map((doc) => (
-              <tr key={doc.id} className="hover:bg-slate-50 cursor-pointer" onClick={() => onSelectDocument(doc)}>
-                <td className="px-6 py-4 whitespace-nowrap">
+              <tr 
+                key={doc.id} 
+                className={`transition-colors ${doc.id === activeDocumentId ? 'bg-blue-50' : 'hover:bg-slate-50'} cursor-pointer`}
+                onClick={() => onSelectDocument(doc)}
+              >
+                <td className="px-6 py-4 whitespace-nowrap" onDoubleClick={() => handleTitleDoubleClick(doc)}>
                   <div className="flex items-center">
-                    <FileTextIcon className="h-5 w-5 text-slate-400 mr-3" />
-                    <div className="text-sm font-medium text-slate-900">{doc.title}</div>
+                    <FileTextIcon className="h-5 w-5 text-slate-400 mr-3 flex-shrink-0" />
+                    {editingId === doc.id ? (
+                        <input
+                            type="text"
+                            value={titleValue}
+                            onChange={handleTitleChange}
+                            onBlur={commitTitleChange}
+                            onKeyDown={handleTitleKeyDown}
+                            className="w-full bg-transparent p-0 border-blue-500 border-b-2 focus:outline-none text-sm font-medium text-slate-900"
+                            autoFocus
+                            onClick={(e) => e.stopPropagation()} // Prevent row click while editing
+                        />
+                    ) : (
+                        <div className="text-sm font-medium text-slate-900 truncate" title={doc.title}>{doc.title}</div>
+                    )}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
